@@ -10,15 +10,18 @@ from joblib import load
 import cv2
 
 # Carga el modelo de KMeans de 16 colores
-with open("modelos/kmeans_model16colors.pkl", "rb") as file:
+with open("modelos/clustering/kmeans_model.pkl", "rb") as file:
     kmeans_model = load(file)
     
 # Carga el Autoencoder de 16 colores
-autoencoder = tf.keras.models.load_model("autoencoder/modelo16CV1-0.tf")
+autoencoder = tf.keras.models.load_model("modelos/autoencoder/modelo256CV2-0.tf")
 
 #Cargo el modelo para reducir la imagen a 16 colores
-with open("modelos/kmeans_model16colorsReduction.pkl", "rb") as file:
+with open("modelos/color/kmeans_model256colorsReduction.pkl", "rb") as file:
     color_reduction16 = load(file)
+
+with open("modelos/umap/umap_model.pkl", "rb") as file:
+    umap_model = load(file)
 
 app = Flask(__name__)
 
@@ -42,9 +45,10 @@ def process_image(filepath):
     image = cv2.resize(image, (240, 240))#Se redimensiona 
     image = image.astype("float32") / 255.0#Se normaliza
     image = image.reshape(1*240*240,3)#Se redimensiona a 2D pa reducir los colores
-    image = color_reduction16.cluster_centers_[color_reduction16.predict(image)]#Se reduce a 16 colores
-    image = image.reshape(1,240,240,3)#Se redimensiona a 4D pal encoder
+    image = color_reduction16.cluster_centers_[color_reduction16.predict(image)]#Se reduce a 256 colores
+    image = image.reshape(1,240,240,3)#Se redimensiona a 4D para el encoder
     image = autoencoder.encoder(image).numpy()#Procesa el encoder
+    image = umap_model.transform(image)#Se transforma con umap
     image = kmeans_model.predict(image)#Se predice el cluster
     cluster = int(image[0])
     return cluster#Se retorna el cluster

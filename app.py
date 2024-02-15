@@ -8,11 +8,15 @@ import numpy as np
 import tensorflow as tf
 from joblib import load
 import cv2
+from collections.abc import MutableMapping
+from pymongo.mongo_client import MongoClient
 
-# Carga el modelo de KMeans de 16 colores
+uri = "mongodb+srv://monterosuniga:monterosunigadb@cluster0.6sh1gzt.mongodb.net/?retryWrites=true&w=majority"
+client = MongoClient(uri)
+db = client["BaseScrapping"]
+
 with open("modelos/clustering/kmeans_model.pkl", "rb") as file:
     kmeans_model = load(file)
-    
 # Carga el Autoencoder de 16 colores
 autoencoder = tf.keras.models.load_model("modelos/autoencoder/modelo256CV2-0.tf")
 
@@ -24,6 +28,26 @@ with open("modelos/umap/umap_model.pkl", "rb") as file:
     umap_model = load(file)
 
 app = Flask(__name__)
+
+database_elements = [
+    {"id": 1, "nombre": "Elemento 1", "descripcion": "Descripción 1"},
+    {"id": 2, "nombre": "Elemento 2", "descripcion": "Descripción 2"},
+    # ... otros elementos de la base de datos
+    
+]
+
+@app.route("/get_cluster/<cluster>", methods=["GET"])
+def get_data_from_mongodb(cluster):
+    try:
+        resultados = db.Imgs_AE_UMAP_Model_Kmeans.find({"id_cluster": cluster}, {"_id": 0})
+        resultados_list = []
+        for documento in resultados:
+            documento["_id"] = str(documento.get("_id"))
+            resultados_list.append(documento)
+        return jsonify(resultados_list)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 
 
 @app.route("/upload", methods=["POST"])
